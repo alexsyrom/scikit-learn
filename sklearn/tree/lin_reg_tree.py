@@ -41,7 +41,8 @@ from ._splitter import Splitter
 from ._tree import DepthFirstTreeBuilder
 from ._tree import BestFirstTreeBuilder
 from ._tree import Tree
-from . import _tree, _splitter, _criterion, _lin_reg_criterion
+from . import _tree, _splitter
+from . import _lin_reg_criterion as _criterion
 
 __all__ = [
            "LinearDecisionTreeRegressor",
@@ -56,7 +57,7 @@ DTYPE = _tree.DTYPE
 DOUBLE = _tree.DOUBLE
 
 CRITERIA_REG = {"mse": _criterion.MSE, "friedman_mse": _criterion.FriedmanMSE,
-                "mae": _criterion.MAE, "lin_reg_mse": _lin_reg_criterion.LinRegMSE}
+                "mae": _criterion.MAE, "lin_reg_mse": _criterion.LinRegMSE}
 
 DENSE_SPLITTERS = {"best": _splitter.BestSplitter,
                    "random": _splitter.RandomSplitter}
