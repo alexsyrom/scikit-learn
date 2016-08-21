@@ -41,7 +41,7 @@ from ._splitter import Splitter
 from ._tree import DepthFirstTreeBuilder
 from ._tree import BestFirstTreeBuilder
 from ._tree import Tree
-from . import _tree, _splitter, _criterion
+from . import _tree, _splitter, _criterion, _lin_reg_criterion
 
 __all__ = [
            "LinearDecisionTreeRegressor",
@@ -56,7 +56,7 @@ DTYPE = _tree.DTYPE
 DOUBLE = _tree.DOUBLE
 
 CRITERIA_REG = {"mse": _criterion.MSE, "friedman_mse": _criterion.FriedmanMSE,
-                "mae": _criterion.MAE, "lin_reg_mse": _criterion.LinRegMSE}
+                "mae": _criterion.MAE, "lin_reg_mse": _lin_reg_criterion.LinRegMSE}
 
 DENSE_SPLITTERS = {"best": _splitter.BestSplitter,
                    "random": _splitter.RandomSplitter}
@@ -1083,12 +1083,26 @@ class LinearDecisionTreeRegressor(DecisionTreeRegressor):
 
     def fit(self, X, y, sample_weight=None, check_input=True,
             X_idx_sorted=None):
-        pass
+        if y.ndim == 1:
+            y = np.reshape(y, (-1, 1))
+        y_big = np.concatenate((y, X[:, :self.n_coefficients]), axis=1)
+        X_without_n_first_dropped = X[:, self.n_first_dropped:]
+        return super(LinearDecisionTreeRegressor, self).fit(
+                X=X_without_n_first_dropped,
+                y=y_big,
+                sample_weight=sample_weight,
+                check_input=check_input,
+                X_idx_sorted=X_idx_sorted)
 
-    def predict_coefficients(self, X_without_n_first_dropped, check_input=True):
+    def predict_mean_and_coefficients(self, X_without_n_first_dropped, check_input=True):
         return super(LinearDecisionTreeRegressor, self).predict(
                     X=X_without_n_first_dropped,
                     check_input=check_input)
 
     def predict(self, X, check_input=True):
-        pass
+        X_without_n_first_dropped = X[:, self.n_first_dropped:]
+        y_big = self.predict_mean_and_coefficients(
+                    X_without_n_first_dropped, 
+                    check_input=check_input)
+        y = np.sum(X[:, :self.n_coefficients] * y_big[:, 1:], axis=1)
+        return y
