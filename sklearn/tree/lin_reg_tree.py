@@ -36,7 +36,7 @@ from ..utils import compute_sample_weight
 from ..utils.multiclass import check_classification_targets
 from ..exceptions import NotFittedError
 
-from ._criterion import Criterion
+from ._lin_reg_criterion import BaseCriterion as Criterion
 from ._splitter import Splitter
 from ._tree import DepthFirstTreeBuilder
 from ._tree import BestFirstTreeBuilder

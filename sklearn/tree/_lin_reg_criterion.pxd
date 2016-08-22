@@ -18,7 +18,7 @@ ctypedef np.npy_intp SIZE_t              # Type for indices and counters
 ctypedef np.npy_int32 INT32_t            # Signed 32 bit integer
 ctypedef np.npy_uint32 UINT32_t          # Unsigned 32 bit integer
 
-cdef class Criterion:
+cdef class BaseCriterion:
     # The criterion computes the impurity of a node and the reduction of
     # impurity of a split on that node. It also computes the output statistics
     # such as the mean in regression and class probabilities in classification.
@@ -40,13 +40,13 @@ cdef class Criterion:
     cdef double weighted_n_left          # Weighted number of samples in the left node
     cdef double weighted_n_right         # Weighted number of samples in the right node
 
-    cdef double* sum_total          # For classification criteria, the sum of the
+    #cdef double* sum_total          # For classification criteria, the sum of the
                                     # weighted count of each label. For regression,
                                     # the sum of w*y. sum_total[k] is equal to
                                     # sum_{i=start}^{end-1} w[samples[i]]*y[samples[i], k],
                                     # where k is output index. 
-    cdef double* sum_left           # Same as above, but for the left side of the split
-    cdef double* sum_right          # same as above, but for the right side of the split
+    #cdef double* sum_left           # Same as above, but for the left side of the split
+    #cdef double* sum_right          # same as above, but for the right side of the split
 
     # The criterion object is maintained such that left and right collected
     # statistics correspond to samples[start:pos] and samples[pos:end].
