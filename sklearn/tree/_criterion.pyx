@@ -1497,14 +1497,14 @@ cdef class LinRegMSE(Criterion):
             self.sum_total += w_y_i
 
             for k in range(self.n_coefficients):
-                z_ik = w * y[i * y_stride + 1 + k]
+                z_ik = y[i * y_stride + 1 + k]
                 self.b_total[k] += z_ik * w_y_i
 
             for k in range(self.n_coefficients):
-                z_ik = w * y[i * y_stride + 1 + k]
+                z_ik = y[i * y_stride + 1 + k]
                 for m in range(self.n_coefficients):
-                    z_im = w * y[i * y_stride + 1 + m]
-                    self.A_total[k * self.n_coefficients + m] += z_im * z_ik
+                    z_im = y[i * y_stride + 1 + m]
+                    self.A_total[k * self.n_coefficients + m] += w * z_im * z_ik
 
             self.weighted_n_node_samples += w
 
@@ -1680,14 +1680,14 @@ cdef class LinRegMSE(Criterion):
                 self.sum_left += w_y_i
 
                 for k in range(self.n_coefficients):
-                    z_ik = w * y[i * self.y_stride + 1 + k]
+                    z_ik = y[i * self.y_stride + 1 + k]
                     self.b_left[k] += z_ik * w_y_i
 
                 for k in range(self.n_coefficients):
-                    z_ik = w * y[i * self.y_stride + 1 + k]
+                    z_ik = y[i * self.y_stride + 1 + k]
                     for m in range(self.n_coefficients):
-                        z_im = w * y[i * self.y_stride + 1 + m]
-                        self.A_left[k * self.n_coefficients + m] += z_im * z_ik
+                        z_im = y[i * self.y_stride + 1 + m]
+                        self.A_left[k * self.n_coefficients + m] += w * z_im * z_ik
 
                 self.weighted_n_left += w
         else:
@@ -1705,14 +1705,14 @@ cdef class LinRegMSE(Criterion):
                 self.sum_left -= w_y_i
 
                 for k in range(self.n_coefficients):
-                    z_ik = w * y[i * self.y_stride + 1 + k]
+                    z_ik = y[i * self.y_stride + 1 + k]
                     self.b_left[k] -= z_ik * w_y_i
 
                 for k in range(self.n_coefficients):
-                    z_ik = w * y[i * self.y_stride + 1 + k]
+                    z_ik = y[i * self.y_stride + 1 + k]
                     for m in range(self.n_coefficients):
-                        z_im = w * y[i * self.y_stride + 1 + m]
-                        self.A_left[k * self.n_coefficients + m] -= z_im * z_ik
+                        z_im = y[i * self.y_stride + 1 + m]
+                        self.A_left[k * self.n_coefficients + m] -= w * z_im * z_ik
 
                 self.weighted_n_left -= w
 
@@ -1725,7 +1725,7 @@ cdef class LinRegMSE(Criterion):
             self.b_right[k] = self.b_total[k] - self.b_left[k]
 
         for k in range(self.sq_n_coefficients):
-            self.A_right[k] = self.A_total[k] - self.A_right[k]
+            self.A_right[k] = self.A_total[k] - self.A_left[k]
 
         self.solve_sle(self.A_left, self.b_left, self.coeffs_left)
         self.solve_sle(self.A_right, self.b_right, self.coeffs_right)
