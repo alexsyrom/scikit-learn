@@ -1554,9 +1554,9 @@ cdef class LinRegMSE(Criterion):
 
     cdef void solve_sle(self, double* A, double* b, double* x) nogil:
         cdef double tau = 0
-        cdef double tau_min = 1.0 ** -8
+        cdef double tau_min = 1e-8
         cdef double determinant = 0
-        cdef double min_determinant = 1.0 ** -7
+        cdef double min_determinant = 1e-7
         cdef double mul = 1
         cdef double small_determinant = 0
         cdef SIZE_t i
