@@ -1,5 +1,5 @@
 """
-This module gathers linear regression decision tree regressor 
+This module gathers linear regression decision tree regressor
 """
 
 # Authors: Gilles Louppe <g.louppe@gmail.com>
@@ -44,9 +44,7 @@ from ._tree import Tree
 from . import _tree, _splitter
 from . import _lin_reg_criterion as _criterion
 
-__all__ = [
-           "LinearDecisionTreeRegressor",
-           ]
+__all__ = ["LinearDecisionTreeRegressor", ]
 
 
 # =============================================================================
@@ -56,6 +54,7 @@ __all__ = [
 DTYPE = _tree.DTYPE
 DOUBLE = _tree.DOUBLE
 
+CRITERIA_CLF = {"gini": _criterion.Gini, "entropy": _criterion.Entropy}
 CRITERIA_REG = {"mse": _criterion.MSE, "friedman_mse": _criterion.FriedmanMSE,
                 "mae": _criterion.MAE, "lin_reg_mse": _criterion.LinRegMSE}
 
@@ -1089,21 +1088,22 @@ class LinearDecisionTreeRegressor(DecisionTreeRegressor):
         y_big = np.concatenate((y, X[:, :self.n_coefficients]), axis=1)
         X_without_n_first_dropped = X[:, self.n_first_dropped:]
         return super(LinearDecisionTreeRegressor, self).fit(
-                X=X_without_n_first_dropped,
-                y=y_big,
-                sample_weight=sample_weight,
-                check_input=check_input,
-                X_idx_sorted=X_idx_sorted)
+            X=X_without_n_first_dropped,
+            y=y_big,
+            sample_weight=sample_weight,
+            check_input=check_input,
+            X_idx_sorted=X_idx_sorted)
 
-    def predict_mean_and_coefficients(self, X_without_n_first_dropped, check_input=True):
+    def predict_mean_and_coefficients(self, X_without_n_first_dropped,
+                                      check_input=True):
         return super(LinearDecisionTreeRegressor, self).predict(
-                    X=X_without_n_first_dropped,
-                    check_input=check_input)
+            X=X_without_n_first_dropped,
+            check_input=check_input)
 
     def predict(self, X, check_input=True):
         X_without_n_first_dropped = X[:, self.n_first_dropped:]
         y_big = self.predict_mean_and_coefficients(
-                    X_without_n_first_dropped, 
-                    check_input=check_input)
+            X_without_n_first_dropped,
+            check_input=check_input)
         y = np.sum(X[:, :self.n_coefficients] * y_big[:, 1:], axis=1)
         return y
