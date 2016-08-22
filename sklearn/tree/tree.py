@@ -36,15 +36,19 @@ from ..utils import compute_sample_weight
 from ..utils.multiclass import check_classification_targets
 from ..exceptions import NotFittedError
 
-from ._lin_reg_criterion import Criterion
+from ._criterion import Criterion
 from ._splitter import Splitter
 from ._tree import DepthFirstTreeBuilder
 from ._tree import BestFirstTreeBuilder
 from ._tree import Tree
-from . import _tree, _splitter
-from . import _lin_reg_criterion as _criterion
+from . import _tree, _splitter, _criterion
 
-__all__ = ["LinearDecisionTreeRegressor", ]
+__all__ = ["DecisionTreeClassifier",
+           "DecisionTreeRegressor",
+           "ExtraTreeClassifier",
+           "ExtraTreeRegressor",
+           "LinearDecisionTreeRegressor"]
+
 
 
 # =============================================================================

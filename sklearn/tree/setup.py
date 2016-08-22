@@ -19,18 +19,8 @@ def configuration(parent_package="", top_path=None):
                          include_dirs=[numpy.get_include()],
                          libraries=libraries,
                          extra_compile_args=["-O3"])
-    config.add_extension("_lin_reg_splitter",
-                         sources=["_lin_reg_splitter.c"],
-                         include_dirs=[numpy.get_include()],
-                         libraries=libraries,
-                         extra_compile_args=["-O3"])
     config.add_extension("_criterion",
                          sources=["_criterion.c"],
-                         include_dirs=[numpy.get_include()],
-                         libraries=libraries,
-                         extra_compile_args=["-O3"])
-    config.add_extension("_lin_reg_criterion",
-                         sources=["_lin_reg_criterion.c"],
                          include_dirs=[numpy.get_include()],
                          libraries=libraries,
                          extra_compile_args=["-O3"])
