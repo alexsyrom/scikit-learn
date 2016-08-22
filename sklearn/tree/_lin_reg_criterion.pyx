@@ -1356,6 +1356,8 @@ cdef class LinRegMSE(Criterion):
         self.weighted_n_right = 0.0
 
         self.sq_sum_total = 0.0
+        self.sq_sum_left = 0.0
+        self.sq_sum_right = 0.0
 
         self.sum_total = 0
         self.sum_left = 0 
@@ -1455,7 +1457,7 @@ cdef class LinRegMSE(Criterion):
                 z_ik = w * y[i * y_stride + 1 + k]
                 for m in range(self.n_coefficients):
                     z_im = w * y[i * y_stride + 1 + m]
-                    self.A_total[k * self.n_coefficients + m] = z_im * z_ik
+                    self.A_total[k * self.n_coefficients + m] += z_im * z_ik
 
             self.weighted_n_node_samples += w
 
@@ -1561,6 +1563,9 @@ cdef class LinRegMSE(Criterion):
         self.sum_left = 0
         self.sum_right = self.sum_total
 
+        self.sq_sum_left = 0
+        self.sq_sum_right = self.sq_sum_total
+
         self.weighted_n_left = 0.0
         self.weighted_n_right = self.weighted_n_node_samples
         self.pos = self.start
@@ -1578,16 +1583,15 @@ cdef class LinRegMSE(Criterion):
         self.sum_left = self.sum_total 
         self.sum_right = 0 
 
+        self.sq_sum_left = self.sq_sum_total
+        self.sq_sum_right = 0
+
         self.weighted_n_right = 0.0
         self.weighted_n_left = self.weighted_n_node_samples
         self.pos = self.end
 
     cdef void update(self, SIZE_t new_pos) nogil:
         """Updated statistics by moving samples[pos:new_pos] to the left."""
-
-        cdef double* sum_left = self.sum_left
-        cdef double* sum_right = self.sum_right
-        cdef double* sum_total = self.sum_total
 
         cdef double* sample_weight = self.sample_weight
         cdef SIZE_t* samples = self.samples
@@ -1598,8 +1602,10 @@ cdef class LinRegMSE(Criterion):
         cdef SIZE_t i
         cdef SIZE_t p
         cdef SIZE_t k
+        cdef SIZE_t m
         cdef DOUBLE_t w = 1.0
-        cdef DOUBLE_t y_ik
+        cdef DOUBLE_t y_i
+        cdef DOUBLE_t w_y_i
 
         # Update statistics up to new_pos
         #
@@ -1616,9 +1622,20 @@ cdef class LinRegMSE(Criterion):
                 if sample_weight != NULL:
                     w = sample_weight[i]
 
-                for k in range(self.n_outputs):
-                    y_ik = y[i * self.y_stride + k]
-                    sum_left[k] += w * y_ik
+                y_i = y[i * y_stride + 0]
+                w_y_i = w * y_i
+                self.sq_sum_left += w_y_i * y_i
+                self.sum_left += w_y_i
+
+                for k in range(self.n_coefficients):
+                    z_ik = w * y[i * y_stride + 1 + k]
+                    self.b_left[k] += z_ik * w_y_i
+
+                for k in range(self.n_coefficients):
+                    z_ik = w * y[i * y_stride + 1 + k]
+                    for m in range(self.n_coefficients):
+                        z_im = w * y[i * y_stride + 1 + m]
+                        self.A_left[k * self.n_coefficients + m] += z_im * z_ik
 
                 self.weighted_n_left += w
         else:
@@ -1630,16 +1647,36 @@ cdef class LinRegMSE(Criterion):
                 if sample_weight != NULL:
                     w = sample_weight[i]
 
-                for k in range(self.n_outputs):
-                    y_ik = y[i * self.y_stride + k]
-                    sum_left[k] -= w * y_ik
+                y_i = y[i * y_stride + 0]
+                w_y_i = w * y_i
+                self.sq_sum_left -= w_y_i * y_i
+                self.sum_left -= w_y_i
+
+                for k in range(self.n_coefficients):
+                    z_ik = w * y[i * y_stride + 1 + k]
+                    self.b_left[k] -= z_ik * w_y_i
+
+                for k in range(self.n_coefficients):
+                    z_ik = w * y[i * y_stride + 1 + k]
+                    for m in range(self.n_coefficients):
+                        z_im = w * y[i * y_stride + 1 + m]
+                        self.A_left[k * self.n_coefficients + m] -= z_im * z_ik
 
                 self.weighted_n_left -= w
 
         self.weighted_n_right = (self.weighted_n_node_samples - 
                                  self.weighted_n_left)
-        for k in range(self.n_outputs):
-            sum_right[k] = sum_total[k] - sum_left[k]
+        self.sum_right = self.sum_total - self.sum_left
+        self.sq_sum_right = self.sq_sum_total - self.sq_sum_left
+
+        for k in range(self.n_coefficients):
+            self.b_right[k] = self.b_total[k] - self.b_left[k]
+
+        for k in range(self.n_coefficients ** 2):
+            self.A_right[k] = self.A_total[k] - self.A_right[k]
+
+        self.solve_sle(self.A_left, self.b_left, self.coeffs_left)
+        self.solve_sle(self.A_right, self.b_right, self.coeffs_right)
 
         self.pos = new_pos
 
@@ -1653,15 +1690,14 @@ cdef class LinRegMSE(Criterion):
         """Evaluate the impurity of the current node, i.e. the impurity of
            samples[start:end]."""
 
-        cdef double* sum_total = self.sum_total
         cdef double impurity
         cdef SIZE_t k
 
-        impurity = self.sq_sum_total / self.weighted_n_node_samples
-        for k in range(self.n_outputs):
-            impurity -= (sum_total[k] / self.weighted_n_node_samples)**2.0
+        impurity = self.sq_sum_total
+        for k in range(self.n_coefficients):
+            impurity -= self.b_total[k] * self.coeffs_total[k] 
 
-        return impurity / self.n_outputs
+        return impurity / self.weighted_n_node_samples
 
     cdef double proxy_impurity_improvement(self) nogil:
         """Compute a proxy of the impurity reduction
@@ -1675,19 +1711,15 @@ cdef class LinRegMSE(Criterion):
         impurity_improvement method once the best split has been found.
         """
 
-        cdef double* sum_left = self.sum_left
-        cdef double* sum_right = self.sum_right
-
         cdef SIZE_t k
         cdef double proxy_impurity_left = 0.0
         cdef double proxy_impurity_right = 0.0
 
-        for k in range(self.n_outputs):
-            proxy_impurity_left += sum_left[k] * sum_left[k]
-            proxy_impurity_right += sum_right[k] * sum_right[k]
+        for k in range(self.n_coefficients):
+            proxy_impurity_left += self.b_left[k] * self.coeffs_left[k] 
+            proxy_impurity_right += self.b_right[k] * self.coeffs_right[k] 
 
-        return (proxy_impurity_left / self.weighted_n_left +
-                proxy_impurity_right / self.weighted_n_right)
+        return (proxy_impurity_left + proxy_impurity_right)
 
     cdef void children_impurity(self, double* impurity_left,
                                 double* impurity_right) nogil:
@@ -1695,45 +1727,14 @@ cdef class LinRegMSE(Criterion):
            left child (samples[start:pos]) and the impurity the right child
            (samples[pos:end])."""
 
-
-        cdef DOUBLE_t* y = self.y
-        cdef DOUBLE_t* sample_weight = self.sample_weight
-        cdef SIZE_t* samples = self.samples
-        cdef SIZE_t pos = self.pos
-        cdef SIZE_t start = self.start
-
-        cdef double* sum_left = self.sum_left
-        cdef double* sum_right = self.sum_right
-
-        cdef double sq_sum_left = 0.0
-        cdef double sq_sum_right
-
-        cdef SIZE_t i
-        cdef SIZE_t p
         cdef SIZE_t k
-        cdef DOUBLE_t w = 1.0
-        cdef DOUBLE_t y_ik
 
-        for p in range(start, pos):
-            i = samples[p]
+        *impurity_left = self.sq_sum_left
+        *impurity_right = self.sq_sum_right
 
-            if sample_weight != NULL:
-                w = sample_weight[i]
+        for k in range(self.n_coefficients):
+            *impurity_left -= self.b_left[k] * self.coeffs_left[k] 
+            *impurity_right -= self.b_right[k] * self.coeffs_right[k] 
 
-            for k in range(self.n_outputs):
-                y_ik = y[i * self.y_stride + k]
-                sq_sum_left += w * y_ik * y_ik
-
-        sq_sum_right = self.sq_sum_total - sq_sum_left
-
-        impurity_left[0] = sq_sum_left / self.weighted_n_left
-        impurity_right[0] = sq_sum_right / self.weighted_n_right
-
-        for k in range(self.n_outputs):
-            impurity_left[0] -= (sum_left[k] / self.weighted_n_left) ** 2.0
-            impurity_right[0] -= (sum_right[k] / self.weighted_n_right) ** 2.0 
-
-        impurity_left[0] /= self.n_outputs
-        impurity_right[0] /= self.n_outputs
-
-
+        *impurity_left /= self.weighted_n_left
+        *impurity_right /= self.weighted_n_right
