@@ -32,7 +32,7 @@ from ._utils cimport safe_realloc
 from ._utils cimport sizet_ptr_to_ndarray
 from ._utils cimport WeightedMedianCalculator
 
-cdef class BaseCriterion:
+cdef class Criterion:
     """Interface for impurity criteria.
 
     This object stores methods on how to calculate how good a split is using
@@ -204,7 +204,7 @@ cdef class BaseCriterion:
                              self.weighted_n_node_samples * impurity_left)))
 
 
-cdef class Criterion(BaseCriterion):
+cdef class SumCriterion(Criterion):
     cdef double* sum_total
     cdef double* sum_left
     cdef double* sum_right
@@ -217,7 +217,7 @@ cdef class Criterion(BaseCriterion):
         free(self.sum_right)
 
 
-cdef class ClassificationCriterion(Criterion):
+cdef class ClassificationCriterion(SumCriterion):
     """Abstract criterion for classification."""
 
     cdef SIZE_t* n_classes
@@ -683,7 +683,7 @@ cdef class Gini(ClassificationCriterion):
         impurity_right[0] = gini_right / self.n_outputs
 
 
-cdef class RegressionCriterion(Criterion):
+cdef class RegressionCriterion(SumCriterion):
     """Abstract regression criterion.
 
     This handles cases where the target is a continuous value, and is
@@ -1332,7 +1332,7 @@ cdef class FriedmanMSE(MSE):
                                self.weighted_n_node_samples))
 
 
-cdef class LinRegMSE(BaseCriterion):
+cdef class LinRegMSE(Criterion):
     cdef SIZE_t n_coefficients
     cdef SIZE_t sq_n_coefficients
 

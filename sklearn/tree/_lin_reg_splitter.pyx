@@ -15,7 +15,7 @@
 #
 # License: BSD 3 clause
 
-from ._lin_reg_criterion cimport Criterion
+from ._criterion cimport Criterion
 
 from libc.stdlib cimport free
 from libc.stdlib cimport qsort
