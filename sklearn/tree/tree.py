@@ -1,6 +1,5 @@
 """
-This module gathers tree-based methods, including decision, regression and
-randomized trees. Single and multi-output problems are both handled.
+This module gathers linear regression decision tree regressor
 """
 
 # Authors: Gilles Louppe <g.louppe@gmail.com>
@@ -11,6 +10,7 @@ randomized trees. Single and multi-output problems are both handled.
 #          Joly Arnaud <arnaud.v.joly@gmail.com>
 #          Fares Hedayati <fares.hedayati@gmail.com>
 #          Nelson Liu <nelson@nelsonliu.me>
+#          Alexey Syromyatnikov <syromyatnikov-al@yandex.ru>
 #
 # License: BSD 3 clause
 
@@ -36,17 +36,15 @@ from ..utils import compute_sample_weight
 from ..utils.multiclass import check_classification_targets
 from ..exceptions import NotFittedError
 
-from ._criterion import Criterion
+from ._lin_reg_criterion import Criterion
 from ._splitter import Splitter
 from ._tree import DepthFirstTreeBuilder
 from ._tree import BestFirstTreeBuilder
 from ._tree import Tree
-from . import _tree, _splitter, _criterion
+from . import _tree, _splitter
+from . import _lin_reg_criterion as _criterion
 
-__all__ = ["DecisionTreeClassifier",
-           "DecisionTreeRegressor",
-           "ExtraTreeClassifier",
-           "ExtraTreeRegressor"]
+__all__ = ["LinearDecisionTreeRegressor", ]
 
 
 # =============================================================================
@@ -58,7 +56,7 @@ DOUBLE = _tree.DOUBLE
 
 CRITERIA_CLF = {"gini": _criterion.Gini, "entropy": _criterion.Entropy}
 CRITERIA_REG = {"mse": _criterion.MSE, "friedman_mse": _criterion.FriedmanMSE,
-                "mae": _criterion.MAE}
+                "mae": _criterion.MAE, "lin_reg_mse": _criterion.LinRegMSE}
 
 DENSE_SPLITTERS = {"best": _splitter.BestSplitter,
                    "random": _splitter.RandomSplitter}
@@ -1049,3 +1047,63 @@ class ExtraTreeRegressor(DecisionTreeRegressor):
             max_leaf_nodes=max_leaf_nodes,
             min_impurity_split=min_impurity_split,
             random_state=random_state)
+
+
+class LinearDecisionTreeRegressor(DecisionTreeRegressor):
+    """ A tree regressor with linear approximation in leafs
+    """
+    def __init__(self,
+                 n_coefficients,
+                 n_first_dropped,
+                 criterion="lin_reg_mse",
+                 splitter="best",
+                 max_depth=None,
+                 min_samples_split=2,
+                 min_samples_leaf=1,
+                 min_weight_fraction_leaf=0.,
+                 max_features="auto",
+                 random_state=None,
+                 min_impurity_split=1e-7,
+                 max_leaf_nodes=None):
+        self.n_coefficients = n_coefficients
+        self.n_first_dropped = n_first_dropped
+        min_samples_leaf = max(min_samples_leaf, n_coefficients)
+        min_samples_split = max(min_samples_split, 2 * n_coefficients)
+        super(LinearDecisionTreeRegressor, self).__init__(
+            criterion=criterion,
+            splitter=splitter,
+            max_depth=max_depth,
+            min_samples_split=min_samples_split,
+            min_samples_leaf=min_samples_leaf,
+            min_weight_fraction_leaf=min_weight_fraction_leaf,
+            max_features=max_features,
+            max_leaf_nodes=max_leaf_nodes,
+            min_impurity_split=min_impurity_split,
+            random_state=random_state)
+
+    def fit(self, X, y, sample_weight=None, check_input=True,
+            X_idx_sorted=None):
+        if y.ndim == 1:
+            y = np.reshape(y, (-1, 1))
+        y_big = np.concatenate((y, X[:, :self.n_coefficients]), axis=1)
+        X_without_n_first_dropped = X[:, self.n_first_dropped:]
+        return super(LinearDecisionTreeRegressor, self).fit(
+            X=X_without_n_first_dropped,
+            y=y_big,
+            sample_weight=sample_weight,
+            check_input=check_input,
+            X_idx_sorted=X_idx_sorted)
+
+    def predict_mean_and_coefficients(self, X_without_n_first_dropped,
+                                      check_input=True):
+        return super(LinearDecisionTreeRegressor, self).predict(
+            X=X_without_n_first_dropped,
+            check_input=check_input)
+
+    def predict(self, X, check_input=True):
+        X_without_n_first_dropped = X[:, self.n_first_dropped:]
+        y_big = self.predict_mean_and_coefficients(
+            X_without_n_first_dropped,
+            check_input=check_input)
+        y = np.sum(X[:, :self.n_coefficients] * y_big[:, 1:], axis=1)
+        return y
