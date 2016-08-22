@@ -1540,7 +1540,7 @@ cdef class LinRegMSE(Criterion):
                     j_max -= 1
                 if (i_drop == i_max):
                     i_max -= 1
-                return (A[i_min * 3 + j_min] * A[i_max * 3 + j_min] - 
+                return (A[i_min * 3 + j_min] * A[i_max * 3 + j_max] - 
                         A[i_min * 3 + j_max] * A[i_max * 3 + j_min])
             else:
                 for i in range(3):
@@ -1582,14 +1582,14 @@ cdef class LinRegMSE(Criterion):
             x[0] = b[0]
         elif self.n_coefficients == 2:
             x[0] = A[1 * 2 + 1] * b[0] - A[0 * 2 + 1] * b[1]
-            x[1] = -A[1 * 2 + 0] * b[0] - A[0 * 2 + 0] * b[1]
+            x[1] = -A[1 * 2 + 0] * b[0] + A[0 * 2 + 0] * b[1]
         elif self.n_coefficients == 3:
             for i in range(self.n_coefficients):
                 x[i] = 0
                 for j in range(self.n_coefficients):
                     small_determinant = self.find_determinant(
                             A, self.n_coefficients, 
-                            i, j)
+                            j, i)
                     x[i] += mul * small_determinant * b[j]
                     mul *= -1
 
