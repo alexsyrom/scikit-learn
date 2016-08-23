@@ -1057,8 +1057,9 @@ class LinearDecisionTreeRegressor(DecisionTreeRegressor):
     """ A tree regressor with linear approximation in leafs
     """
     def __init__(self,
-                 n_coefficients,
-                 n_first_dropped,
+                 n_coefficients=0,
+                 n_first_dropped=0,
+                 const_term=True,
                  criterion="lin_reg_mse",
                  splitter="best",
                  max_depth=None,
@@ -1071,6 +1072,7 @@ class LinearDecisionTreeRegressor(DecisionTreeRegressor):
                  max_leaf_nodes=None):
         self.n_coefficients = n_coefficients
         self.n_first_dropped = n_first_dropped
+        self.const_term = const_term
         min_samples_leaf = max(min_samples_leaf, n_coefficients)
         min_samples_split = max(min_samples_split, 2 * n_coefficients)
         super(LinearDecisionTreeRegressor, self).__init__(
@@ -1089,7 +1091,10 @@ class LinearDecisionTreeRegressor(DecisionTreeRegressor):
             X_idx_sorted=None):
         if y.ndim == 1:
             y = np.reshape(y, (-1, 1))
-        y_big = np.concatenate((y, X[:, :self.n_coefficients]), axis=1)
+        if self.const_term:
+            y_big = np.concatenate((y, np.ones(y.shape), X[:, :self.n_coefficients]), axis=1)
+        else:
+            y_big = np.concatenate((y, X[:, :self.n_coefficients]), axis=1)
         X_without_n_first_dropped = X[:, self.n_first_dropped:]
         return super(LinearDecisionTreeRegressor, self).fit(
             X=X_without_n_first_dropped,
@@ -1109,5 +1114,8 @@ class LinearDecisionTreeRegressor(DecisionTreeRegressor):
         y_big = self.predict_mean_and_coefficients(
             X_without_n_first_dropped,
             check_input=check_input)
-        y = np.sum(X[:, :self.n_coefficients] * y_big[:, 1:], axis=1)
+        if self.const_term:
+            y = np.sum(np.concatenate((np.ones((X.shape[0], 1)), X[:, :self.n_coefficients]), axis=1) * y_big[:, 1:], axis=1)
+        else:
+            y = np.sum(X[:, :self.n_coefficients] * y_big[:, 1:], axis=1)
         return y
